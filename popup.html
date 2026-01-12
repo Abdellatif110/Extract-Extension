@@ -1,13 +1,28 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="UTF-8">
   <title>DataSniffer</title>
   <link rel="stylesheet" href="popup.css">
 </head>
+
 <body>
   <div class="container">
     <h1>DataSniffer</h1>
+
+    <div class="header-actions">
+      <button id="export-csv" class="action-btn">Export CSV</button>
+      <button id="save-sheet" class="action-btn primary">Save to Sheet</button>
+    </div>
+
+    <div id="status-msg" class="status-msg"></div>
+
+    <div class="data-section">
+      <h2>Name</h2>
+      <div id="page-name" class="data-value"></div>
+    </div>
+
     <div class="data-section">
       <h2>Emails</h2>
       <div id="emails" class="data-list"></div>
@@ -20,7 +35,17 @@
       <h2>Social Media</h2>
       <div id="social-media" class="data-list"></div>
     </div>
+
+    <div class="settings-section">
+      <details>
+        <summary>Settings (Google Sheet)</summary>
+        <p class="hint">Deploy the Apps Script and paste the Web App URL here.</p>
+        <input type="text" id="sheet-script-url" placeholder="https://script.google.com/macros/s/..." />
+        <button id="save-settings" class="secondary-btn">Save URL</button>
+      </details>
+    </div>
   </div>
   <script src="popup.js"></script>
 </body>
+
 </html>

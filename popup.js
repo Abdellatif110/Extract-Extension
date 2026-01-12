@@ -1,15 +1,131 @@
 // Connect to background script
 const port = chrome.runtime.connect({ name: "popup" });
 
+let currentData = null;
+
 // Request data when popup opens
 port.postMessage({ type: "GET_DATA" });
+
+// Load settings
+const urlInput = document.getElementById('sheet-script-url');
+const saveSettingsBtn = document.getElementById('save-settings');
+
+chrome.storage.local.get(['sheetScriptUrl'], (result) => {
+  if (result.sheetScriptUrl) {
+    urlInput.value = result.sheetScriptUrl;
+  }
+});
+
+saveSettingsBtn.addEventListener('click', () => {
+  const url = urlInput.value.trim();
+  if (url) {
+    chrome.storage.local.set({ sheetScriptUrl: url }, () => {
+      showStatus('Settings saved!', 'green');
+    });
+  }
+});
 
 // Handle incoming data
 port.onMessage.addListener((msg) => {
   if (msg.type === "DATA") {
+    currentData = msg.data;
     displayData(msg.data);
   }
 });
+
+// Export CSV
+document.getElementById('export-csv').addEventListener('click', () => {
+  if (!currentData) return;
+  const csvContent = generateCSV(currentData);
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `extracted_data_${Date.now()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+});
+
+// Save to Sheet
+document.getElementById('save-sheet').addEventListener('click', () => {
+  if (!currentData) {
+    showStatus('No data to save', 'red');
+    return;
+  }
+
+  if (!urlInput.value.trim()) {
+    showStatus('Please set Google Apps Script URL in settings', 'red');
+    document.querySelector('details').open = true;
+    return;
+  }
+
+  const payload = prepareRowData(currentData);
+
+  showStatus('Saving...', 'blue');
+
+  fetch(urlInput.value.trim(), {
+    method: 'POST',
+    mode: 'no-cors', // Important for Google Apps Script Web App
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload)
+  })
+    .then(() => {
+      showStatus('Sent to Google Sheet!', 'green');
+    })
+    .catch(err => {
+      console.error(err);
+      showStatus('Error sending data', 'red');
+    });
+});
+
+function showStatus(msg, color) {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.style.color = color || 'black';
+  setTimeout(() => el.textContent = '', 3000);
+}
+
+function prepareRowData(data) {
+  // Format: Name, Full-Number, Email, facebook, instagram, Youtube, les autre Social Media
+  const facebook = (data.socialMedia.facebook || []).join(', ');
+  const instagram = (data.socialMedia.instagram || []).join(', ');
+  const youtube = (data.socialMedia.youtube || []).join(', ');
+
+  // Others
+  const others = [
+    ...(data.socialMedia.twitter || []),
+    ...(data.socialMedia.linkedin || []),
+    ...(data.socialMedia.tiktok || [])
+  ].join(', ');
+
+  return {
+    name: data.name || 'Unknown',
+    number: data.phones.join(', '),
+    email: data.emails.join(', '),
+    facebook: facebook,
+    instagram: instagram,
+    youtube: youtube,
+    others: others
+  };
+}
+
+function generateCSV(data) {
+  const row = prepareRowData(data);
+  const headers = ["Name", "Full-Number", "Email", "facebook", "instagram", "Youtube", "les autre Social Media"];
+  const values = [
+    `"${row.name.replace(/"/g, '""')}"`,
+    `"${row.number.replace(/"/g, '""')}"`,
+    `"${row.email.replace(/"/g, '""')}"`,
+    `"${row.facebook.replace(/"/g, '""')}"`,
+    `"${row.instagram.replace(/"/g, '""')}"`,
+    `"${row.youtube.replace(/"/g, '""')}"`,
+    `"${row.others.replace(/"/g, '""')}"`
+  ];
+  return headers.join(",") + "\n" + values.join(",");
+}
 
 // Display the extracted data
 function displayData(data) {
@@ -17,9 +133,11 @@ function displayData(data) {
     document.getElementById('emails').innerHTML = '<div class="no-data">No data found for this tab. Try refreshing.</div>';
     document.getElementById('phones').innerHTML = '';
     document.getElementById('social-media').innerHTML = '';
+    document.getElementById('page-name').textContent = '';
     return;
   }
 
+  document.getElementById('page-name').textContent = data.name || 'Not Detected';
   displayItems('emails', data.emails);
   displayItems('phones', data.phones);
   displaySocialMedia(data.socialMedia);
@@ -40,7 +158,7 @@ function displayItems(elementId, items) {
 
     const textElement = document.createElement('span');
     textElement.textContent = item;
-    textElement.title = item; // Tooltip for long text
+    textElement.title = item;
 
     const copyBtn = document.createElement('button');
     copyBtn.className = 'copy-btn';
@@ -71,12 +189,6 @@ function displaySocialMedia(socialMedia) {
       container.appendChild(platformHeader);
 
       const listContainer = document.createElement('div');
-      listContainer.id = `social-${platform}`; // Unique ID for consistency logic, though not used by displayItems direct call here
-
-      // We'll reuse displayItems logic or custom logic. 
-      // displayItems adds to an ID, but here we want to append directly. 
-      // Let's modify displayItems or write a loop here. 
-      // Re-using displayItems requires the element to be in DOM.
       container.appendChild(listContainer);
       displayItemsHelper(listContainer, links);
     }

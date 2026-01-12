@@ -9,7 +9,7 @@ body {
   background: white;
   border-radius: 8px;
   padding: 16px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 h1 {
@@ -24,6 +24,39 @@ h2 {
   font-size: 14px;
   color: #666;
   margin: 16px 0 8px 0;
+}
+
+.action-btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-right: 8px;
+  background: #e0e0e0;
+  color: #333;
+}
+
+.action-btn.primary {
+  background: #4285f4;
+  color: white;
+}
+
+.action-btn:hover {
+  opacity: 0.9;
+}
+
+.status-msg {
+  margin: 10px 0;
+  font-size: 13px;
+  color: green;
+  min-height: 18px;
+}
+
+.data-value {
+  font-weight: bold;
+  font-size: 14px;
+  padding: 4px 0;
 }
 
 .data-section {
@@ -41,6 +74,9 @@ h2 {
 .data-item {
   padding: 6px 0;
   border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .data-item:last-child {
@@ -48,21 +84,53 @@ h2 {
 }
 
 .copy-btn {
-  background: #4285f4;
-  color: white;
-  border: none;
+  background: #f0f0f0;
+  color: #333;
+  border: 1px solid #ccc;
   border-radius: 4px;
-  padding: 4px 8px;
+  padding: 2px 6px;
   margin-left: 8px;
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
 }
 
 .copy-btn:hover {
-  background: #3367d6;
+  background: #e0e0e0;
 }
 
 .no-data {
   color: #999;
   font-style: italic;
+}
+
+.settings-section {
+  margin-top: 20px;
+  border-top: 1px solid #eee;
+  padding-top: 10px;
+  font-size: 13px;
+}
+
+.settings-section input {
+  width: 100%;
+  padding: 6px;
+  margin-top: 5px;
+  box-sizing: border-box;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.hint {
+  color: #666;
+  margin: 5px 0;
+  font-size: 11px;
+}
+
+.secondary-btn {
+  margin-top: 5px;
+  padding: 4px 8px;
+  background: #666;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
 }

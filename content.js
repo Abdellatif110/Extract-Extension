@@ -4,11 +4,25 @@ const phoneRegex = /(?:\+?\d{1,3}[ -]?)?\(?\d{3}\)?[ -]?\d{3}[ -]?\d{4}/g; // Ba
 const socialDomains = {
   facebook: ["facebook.com", "fb.com"],
   instagram: ["instagram.com"],
+  youtube: ["youtube.com"],
+  // Others will be grouped
   twitter: ["twitter.com", "x.com"],
   linkedin: ["linkedin.com"],
-  youtube: ["youtube.com"],
   tiktok: ["tiktok.com"]
 };
+
+function extractName() {
+  // Try Open Graph Site Name
+  const ogSiteName = document.querySelector('meta[property="og:site_name"]');
+  if (ogSiteName) return ogSiteName.content;
+
+  // Try H1
+  const h1 = document.querySelector('h1');
+  if (h1 && h1.innerText.length < 100) return h1.innerText.trim();
+
+  // Fallback to Title
+  return document.title.split(/[-|]/)[0].trim();
+}
 
 function extractFromText() {
   const text = document.body.innerText;
@@ -58,15 +72,17 @@ function extractFromHrefs() {
 function scanAndSend() {
   const textData = extractFromText();
   const linkData = extractFromHrefs();
+  const name = extractName();
 
   // Combine and Deduplicate
   const combinedData = {
+    name: name,
     emails: [...new Set([...textData.emails, ...linkData.emails])],
     phones: [...new Set([...textData.phones, ...linkData.phones])],
     socialMedia: {}
   };
 
-  // For social media, we only extracted from links (usually more reliable than text for URLs)
+  // For social media, we only extracted from links
   Object.keys(socialDomains).forEach(platform => {
     combinedData.socialMedia[platform] = [...new Set(linkData.socialMedia[platform] || [])];
   });
@@ -81,7 +97,7 @@ function scanAndSend() {
 // Run immediately
 scanAndSend();
 
-// Optional: Run again if the DOM changes effectively (debounced) (Simulated simplified version)
+// Optional: Run again if the DOM changes effectively (debounced)
 let timeout;
 const observer = new MutationObserver(() => {
   clearTimeout(timeout);
