@@ -60,7 +60,8 @@ document.getElementById('save-sheet').addEventListener('click', () => {
     return;
   }
 
-  const payload = prepareRowData(currentData);
+  // Pass true to format for Google Sheets (avoids formula errors with +)
+  const payload = prepareRowData(currentData, true);
 
   showStatus('Saving...', 'blue');
 
@@ -88,7 +89,7 @@ function showStatus(msg, color) {
   setTimeout(() => el.textContent = '', 3000);
 }
 
-function prepareRowData(data) {
+function prepareRowData(data, forSheet = false) {
   // Format: Name, Full-Number, Email, facebook, instagram, Youtube, les autre Social Media
   const facebook = (data.socialMedia.facebook || []).join(', ');
   const instagram = (data.socialMedia.instagram || []).join(', ');
@@ -106,9 +107,16 @@ function prepareRowData(data) {
     ? `${data.name} (${data.url})`
     : data.url;
 
+  let numberField = data.phones.join(', ');
+
+  // FIX: Prepend ' for Google Sheets to prevent it from interpreting +123 as a formula
+  if (forSheet && numberField.length > 0) {
+    numberField = "'" + numberField;
+  }
+
   return {
     name: nameField,
-    number: data.phones.join(', '),
+    number: numberField,
     email: data.emails.join(', '),
     facebook: facebook,
     instagram: instagram,
@@ -118,7 +126,7 @@ function prepareRowData(data) {
 }
 
 function generateCSV(data) {
-  const row = prepareRowData(data);
+  const row = prepareRowData(data, false);
   const headers = ["Name", "Full-Number", "Email", "facebook", "instagram", "Youtube", "les autre Social Media"];
   const values = [
     `"${row.name.replace(/"/g, '""')}"`,
