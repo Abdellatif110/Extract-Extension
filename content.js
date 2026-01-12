@@ -93,11 +93,24 @@ function scanAndSend() {
     combinedData.socialMedia[platform] = [...new Set(linkData.socialMedia[platform] || [])];
   });
 
-  // Send to background
-  chrome.runtime.sendMessage({
-    type: "EXTRACTED_DATA",
-    payload: combinedData
-  });
+  // Send to background safely
+  try {
+    if (!chrome.runtime?.id) {
+      throw new Error("Extension context invalidated");
+    }
+    chrome.runtime.sendMessage({
+      type: "EXTRACTED_DATA",
+      payload: combinedData
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        // Ignore errors that proceed from the background script not being ready yet or closed
+        console.debug("Background communication error:", chrome.runtime.lastError.message);
+      }
+    });
+  } catch (e) {
+    console.log("Extension context invalidated. Stopping observer.");
+    if (observer) observer.disconnect();
+  }
 }
 
 // Run immediately
