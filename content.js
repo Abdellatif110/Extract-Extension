@@ -28,15 +28,7 @@ function extractName() {
   return window.location.hostname;
 }
 
-function extractFromText() {
-  const text = document.body.innerText;
-  const emails = text.match(emailRegex) || [];
-  const phones = text.match(phoneRegex) || [];
-  return { emails, phones };
-}
-
-function extractFromHrefs() {
-  const anchors = Array.from(document.querySelectorAll("a[href]"));
+function extractFromSelectors() {
   const emails = [];
   const phones = [];
   const socialMedia = {};
@@ -44,24 +36,35 @@ function extractFromHrefs() {
   // Initialize social media arrays
   Object.keys(socialDomains).forEach(key => socialMedia[key] = []);
 
-  anchors.forEach(a => {
+  // 1. Selector-based Email Extraction
+  // Look for mailto links
+  document.querySelectorAll('a[href^="mailto:"]').forEach(a => {
+    const email = a.href.replace("mailto:", "").split("?")[0];
+    if (email) emails.push(email);
+  });
+  // Look for structured data (itemprop)
+  document.querySelectorAll('[itemprop="email"]').forEach(el => {
+    if (el.textContent) emails.push(el.textContent.trim());
+  });
+
+  // 2. Selector-based Phone Extraction
+  // Look for tel links
+  document.querySelectorAll('a[href^="tel:"]').forEach(a => {
+    const phone = a.href.replace("tel:", "").split("?")[0];
+    if (phone) phones.push(phone);
+  });
+  // Look for structured data
+  document.querySelectorAll('[itemprop="telephone"]').forEach(el => {
+    if (el.textContent) phones.push(el.textContent.trim());
+  });
+
+  // 3. Social Media (Link based)
+  document.querySelectorAll("a[href]").forEach(a => {
     const href = a.href;
-
-    // Email (mailto)
-    if (href.startsWith("mailto:")) {
-      emails.push(href.replace("mailto:", "").split("?")[0]);
-    }
-
-    // Phone (tel)
-    if (href.startsWith("tel:")) {
-      phones.push(href.replace("tel:", ""));
-    }
-
-    // Social Media
     let urlObj;
     try {
       urlObj = new URL(href);
-    } catch (e) { return; } // Invalid URL
+    } catch (e) { return; }
 
     for (const [platform, domains] of Object.entries(socialDomains)) {
       if (domains.some(d => urlObj.hostname.includes(d))) {
@@ -74,8 +77,7 @@ function extractFromHrefs() {
 }
 
 function scanAndSend() {
-  const textData = extractFromText();
-  const linkData = extractFromHrefs();
+  const data = extractFromSelectors();
   const name = extractName();
   const url = window.location.href;
 
@@ -83,14 +85,14 @@ function scanAndSend() {
   const combinedData = {
     name: name,
     url: url,
-    emails: [...new Set([...textData.emails, ...linkData.emails])],
-    phones: [...new Set([...textData.phones, ...linkData.phones])],
+    emails: [...new Set(data.emails)],
+    phones: [...new Set(data.phones)],
     socialMedia: {}
   };
 
-  // For social media, we only extracted from links
+  // Deduplicate social media
   Object.keys(socialDomains).forEach(platform => {
-    combinedData.socialMedia[platform] = [...new Set(linkData.socialMedia[platform] || [])];
+    combinedData.socialMedia[platform] = [...new Set(data.socialMedia[platform] || [])];
   });
 
   // Send to background safely
