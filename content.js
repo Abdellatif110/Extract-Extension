@@ -1,14 +1,15 @@
-// Regular expressions for matching various data types
-const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-const phoneRegex = /(?:\+?\d{1,3}[ -]?)?\(?\d{3}\)?[ -]?\d{3}[ -]?\d{4}/g; // Basic international-ish format
+// Social media platform definitions
 const socialDomains = {
   facebook: ["facebook.com", "fb.com"],
   instagram: ["instagram.com"],
   youtube: ["youtube.com"],
-  // Others will be grouped
   twitter: ["twitter.com", "x.com"],
   linkedin: ["linkedin.com"],
-  tiktok: ["tiktok.com"]
+  tiktok: ["tiktok.com"],
+  pinterest: ["pinterest.com"],
+  snapchat: ["snapchat.com"],
+  whatsapp: ["whatsapp.com", "wa.me"],
+  telegram: ["telegram.me", "t.me"]
 };
 
 function extractName() {
@@ -29,36 +30,77 @@ function extractName() {
 }
 
 function extractFromSelectors() {
-  const emails = [];
-  const phones = [];
+  const emails = new Set();
+  const phones = new Set();
   const socialMedia = {};
 
   // Initialize social media arrays
   Object.keys(socialDomains).forEach(key => socialMedia[key] = []);
 
-  // 1. Selector-based Email Extraction
-  // Look for mailto links
+  // ========== EMAIL EXTRACTION ==========
+  // Mailto links
   document.querySelectorAll('a[href^="mailto:"]').forEach(a => {
     const email = a.href.replace("mailto:", "").split("?")[0];
-    if (email) emails.push(email);
+    if (email && email.includes('@')) emails.add(email);
   });
-  // Look for structured data (itemprop)
+
+  // Schema.org structured data
   document.querySelectorAll('[itemprop="email"]').forEach(el => {
-    if (el.textContent) emails.push(el.textContent.trim());
+    const text = (el.textContent || el.getAttribute('content') || '').trim();
+    if (text && text.includes('@')) emails.add(text);
   });
 
-  // 2. Selector-based Phone Extraction
-  // Look for tel links
-  document.querySelectorAll('a[href^="tel:"]').forEach(a => {
-    const phone = a.href.replace("tel:", "").split("?")[0];
-    if (phone) phones.push(phone);
-  });
-  // Look for structured data
-  document.querySelectorAll('[itemprop="telephone"]').forEach(el => {
-    if (el.textContent) phones.push(el.textContent.trim());
+  // Data attributes
+  document.querySelectorAll('[data-email], [data-mail]').forEach(el => {
+    const emailData = el.getAttribute('data-email') || el.getAttribute('data-mail');
+    if (emailData && emailData.includes('@')) emails.add(emailData);
   });
 
-  // 3. Social Media (Link based)
+  // Common class patterns
+  document.querySelectorAll('.email, .e-mail, .u-email, [class*="email"]').forEach(el => {
+    const text = el.textContent.trim();
+    if (text && text.includes('@') && !text.includes(' ') && text.length < 100) {
+      emails.add(text);
+    }
+  });
+
+  // ========== PHONE EXTRACTION ==========
+  // Tel links
+  document.querySelectorAll('a[href^="tel:"], a[href^="callto:"]').forEach(a => {
+    const phone = a.href.replace("tel:", "").replace("callto:", "").split("?")[0];
+    if (phone) phones.add(phone);
+  });
+
+  // Schema.org structured data
+  document.querySelectorAll('[itemprop="telephone"], [itemprop="phone"], [itemprop="faxNumber"]').forEach(el => {
+    const text = (el.textContent || el.getAttribute('content') || '').trim();
+    if (text) phones.add(text);
+  });
+
+  // Data attributes
+  document.querySelectorAll('[data-phone], [data-tel], [data-telephone]').forEach(el => {
+    const phoneData = el.getAttribute('data-phone') || el.getAttribute('data-tel') || el.getAttribute('data-telephone');
+    if (phoneData) phones.add(phoneData);
+  });
+
+  // Common class patterns
+  document.querySelectorAll('.tel, .phone, .u-tel, .p-tel, [class*="phone"], [class*="tel"]').forEach(el => {
+    const text = el.textContent.trim();
+    // Basic validation: contains numbers and common phone chars
+    if (text && /[\d\s\-\+\(\)]+/.test(text) && text.length < 30) {
+      phones.add(text);
+    }
+  });
+
+  // ARIA labels with phone
+  document.querySelectorAll('[aria-label*="phone" i], [aria-label*="tel" i]').forEach(el => {
+    const text = el.textContent.trim();
+    if (text && /[\d\s\-\+\(\)]+/.test(text) && text.length < 30) {
+      phones.add(text);
+    }
+  });
+
+  // ========== SOCIAL MEDIA EXTRACTION ==========
   document.querySelectorAll("a[href]").forEach(a => {
     const href = a.href;
     let urlObj;
@@ -73,7 +115,26 @@ function extractFromSelectors() {
     }
   });
 
-  return { emails, phones, socialMedia };
+  // Also check sameAs schema.org property (often used for social profiles)
+  document.querySelectorAll('[itemprop="sameAs"]').forEach(el => {
+    const url = el.getAttribute('href') || el.getAttribute('content') || el.textContent.trim();
+    if (!url) return;
+
+    try {
+      const urlObj = new URL(url);
+      for (const [platform, domains] of Object.entries(socialDomains)) {
+        if (domains.some(d => urlObj.hostname.includes(d))) {
+          socialMedia[platform].push(url);
+        }
+      }
+    } catch (e) { }
+  });
+
+  return {
+    emails: Array.from(emails),
+    phones: Array.from(phones),
+    socialMedia
+  };
 }
 
 function scanAndSend() {
