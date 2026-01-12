@@ -14,14 +14,18 @@ const socialDomains = {
 function extractName() {
   // Try Open Graph Site Name
   const ogSiteName = document.querySelector('meta[property="og:site_name"]');
-  if (ogSiteName) return ogSiteName.content;
+  if (ogSiteName && ogSiteName.content) return ogSiteName.content;
 
   // Try H1
   const h1 = document.querySelector('h1');
-  if (h1 && h1.innerText.length < 100) return h1.innerText.trim();
+  if (h1 && h1.innerText.length > 0 && h1.innerText.length < 50) return h1.innerText.trim();
 
   // Fallback to Title
-  return document.title.split(/[-|]/)[0].trim();
+  const title = document.title.split(/[-|]/)[0].trim();
+  if (title) return title;
+
+  // Final fallback: Hostname
+  return window.location.hostname;
 }
 
 function extractFromText() {
@@ -73,10 +77,12 @@ function scanAndSend() {
   const textData = extractFromText();
   const linkData = extractFromHrefs();
   const name = extractName();
+  const url = window.location.href;
 
   // Combine and Deduplicate
   const combinedData = {
     name: name,
+    url: url,
     emails: [...new Set([...textData.emails, ...linkData.emails])],
     phones: [...new Set([...textData.phones, ...linkData.phones])],
     socialMedia: {}

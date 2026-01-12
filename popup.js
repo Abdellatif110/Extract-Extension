@@ -101,8 +101,13 @@ function prepareRowData(data) {
     ...(data.socialMedia.tiktok || [])
   ].join(', ');
 
+  // We combine Name and URL to fit the "Name" column requirement while providing the "siteweb" (URL) info.
+  const nameField = data.name
+    ? `${data.name} (${data.url})`
+    : data.url;
+
   return {
-    name: data.name || 'Unknown',
+    name: nameField,
     number: data.phones.join(', '),
     email: data.emails.join(', '),
     facebook: facebook,
@@ -134,10 +139,12 @@ function displayData(data) {
     document.getElementById('phones').innerHTML = '';
     document.getElementById('social-media').innerHTML = '';
     document.getElementById('page-name').textContent = '';
+    document.getElementById('page-url').textContent = '';
     return;
   }
 
   document.getElementById('page-name').textContent = data.name || 'Not Detected';
+  document.getElementById('page-url').textContent = data.url || '';
   displayItems('emails', data.emails);
   displayItems('phones', data.phones);
   displaySocialMedia(data.socialMedia);
